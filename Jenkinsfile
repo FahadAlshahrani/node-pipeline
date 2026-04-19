@@ -27,7 +27,7 @@ pipeline {
         stage('Build') {
             steps {
                  echo "Build stage - in a real app this could be: npm run build"
-                 sh 'echo Build complete for version $(node -e "console.log(require(package.json).version)")'
+                 sh 'echo Build complete for version $(node -e "console.log(require(./package.json).version)")'
             }
         }
     }
