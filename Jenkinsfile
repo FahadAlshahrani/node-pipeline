@@ -18,6 +18,12 @@ pipeline {
                 sh "npm install"
             }
         }
+        stage('Code Quality') {
+            steps {
+                echo "Checking code quality..."
+                sh "npx eslint src/ --ext .js || true"
+            }
+        }
         stage('Test') {
             steps {
                 echo "Running tests in ${NODE_ENV} mode..."
