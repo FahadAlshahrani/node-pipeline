@@ -13,6 +13,11 @@ pipeline {
             defaultValue: true,
             description: 'Run test suite'
         )
+        booleanParam(
+            name: 'SKIP_QUALITY',
+            defaultValue:false,
+            description: 'Skip code quality check'
+        )
         choice(
             name: 'ENVIRONMENT',
             choices: ['dev', 'staging', 'production'],
@@ -38,12 +43,18 @@ pipeline {
             }
         }
         stage('Code Quality') {
+            when {
+                expression { params.SKIP_QUALITY == false }
+            } 
             steps {
                 echo "Checking code quality..."
                 sh "npx eslint src/ --ext .js || true"
             }
         }
         stage('Test') {
+            when {
+                expression { params.RUN_TESTS == true }
+            }
             steps {
                 echo "Running tests in ${NODE_ENV} mode..."
                 sh "npm test"
@@ -55,10 +66,25 @@ pipeline {
                  sh 'echo Build complete!'
             }
         }
-        stage('Deploy') {
+        stage('Deploy to staging') {
+            when {
+                expression { params.ENVIRONMENT == 'staging' }
+            }
             steps {
                 echo "Deploying v${params.APP_VERSION} to ${params.ENVIRONMENT} environment...."
-                sh 'echo Deploying now...'
+                sh 'echo Staging deploy complete!'
+            }
+        }
+        stage('Deploy to production') {
+            when {
+                allOf {
+                    expression { params.ENVIRONMENT == 'production' }
+                    branch 'master'
+                }
+            }
+            steps {
+                echo "Deploying v${params.APP_VERSION} to ${params.ENVIRONMENT} environment...."
+                sh 'echo Production deploy complete!'
             }
         }
     }
