@@ -52,7 +52,7 @@ pipeline {
         stage('Build') {
             steps {
                  echo "Building ${APP_NAME} v${params.APP_VERSION} for ${params.ENVIRONMENT}..."
-                 sh 'echo Build complete for version $(node -e "console.log(require(./package.json).version)")'
+                 sh 'echo Build complete!'
             }
         }
         stage('Deploy') {
