@@ -1,6 +1,25 @@
 pipeline {
     agent any
 
+    parameters {
+
+        string(
+            name: 'APP_VERSION',
+            defaultValue: '1.0.0',
+            description: 'Version number to build'
+        )
+        booleanParam(
+            name: 'RUN_TESTS',
+            defaultValue: true,
+            description: 'Run test suite'
+        )
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'staging', 'production']
+            description: 'Target deployment environment'
+        )
+    }
+
     environment {
         APP_NAME = 'jenkins-pipeline-prac'
         NODE_ENV = 'test'
@@ -14,7 +33,7 @@ pipeline {
         }
         stage('Install Dependencies') {
             steps {
-                echo "Installing dependencies for ${APP_NAME}..."
+                echo "Installing dependencies for ${APP_NAME} v${params.APP_VERSION}..."
                 sh "npm install"
             }
         }
@@ -32,21 +51,27 @@ pipeline {
         }
         stage('Build') {
             steps {
-                 echo "Build stage - in a real app this could be: npm run build"
+                 echo "Building ${APP_NAME} v${params.APP_VERSION} for ${params.ENVIRONMENT}..."
                  sh 'echo Build complete for version $(node -e "console.log(require(./package.json).version)")'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo "Deploying v${params.APP_VERSION} to ${params.ENVIRONMENT} environment...."
+                sh 'echo Deploying now...'
             }
         }
     }
 
     post {
         success {
-            echo '✅ Pipeline passed! Great job.'
+            echo "✅ ${APP_NAME} v${params.APP_VERSION} deployed to ${params.ENVIRONMENT} successfully!"
         }
         failure {
-            echo '❌ Pipeline failed. Check the logs above.'
+            echo "❌ Pipeline failed for v${params.APP_VERSION} targeting ${params.ENVIRONMENT}."
         }
         always {
-            echo 'Pipeline finished. This runs no matter what.'
+            echo 'Pipeline finished.'
         }
     }
 }
