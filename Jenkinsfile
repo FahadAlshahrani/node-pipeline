@@ -15,7 +15,7 @@ pipeline {
         )
         choice(
             name: 'ENVIRONMENT',
-            choices: ['dev', 'staging', 'production']
+            choices: ['dev', 'staging', 'production'],
             description: 'Target deployment environment'
         )
     }
