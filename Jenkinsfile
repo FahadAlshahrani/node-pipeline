@@ -28,6 +28,7 @@ pipeline {
     environment {
         APP_NAME = 'jenkins-pipeline-prac'
         NODE_ENV = 'test'
+        APP_API_KEY = credentials('app-api-key')
     }
 
     stages {
@@ -64,6 +65,21 @@ pipeline {
             steps {
                  echo "Building ${APP_NAME} v${params.APP_VERSION} for ${params.ENVIRONMENT}..."
                  sh 'echo Build complete!'
+            }
+        }
+        stage('Push to registry') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId:'docker-hub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+                    sh 'echo "Logging in as $DOCKER_USER"'
+                    sh 'echo "Docker login successful (password is: $DOCKER_PASS)"'
+                    sh 'echo Pushing image to registry...'
+                }
             }
         }
         stage('Deploy to staging') {
