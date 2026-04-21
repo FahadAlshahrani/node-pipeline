@@ -77,10 +77,10 @@ pipeline {
         }
         stage('production approval') {
             when {
-                allOf {
+               
                     expression { params.ENVIRONMENT == 'production'}
-                    branch 'master'
-                }
+                    
+               
             }
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
@@ -100,10 +100,10 @@ pipeline {
         }
         stage('Deploy to production') {
             when {
-                allOf {
+                
                     expression { params.ENVIRONMENT == 'production' }
-                    branch 'master'
-                }
+                   
+               
             }
             steps {
                 echo "Deploying v${params.APP_VERSION} to ${params.ENVIRONMENT} environment...."
