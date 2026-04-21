@@ -75,6 +75,29 @@ pipeline {
                 sh 'echo Staging deploy complete!'
             }
         }
+        stage('production approval') {
+            when {
+                allOf {
+                    expression { params.ENVIRONMENT == 'production'}
+                    branch 'master'
+                }
+            }
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    input (
+                        message: "Deploy v${params.APP_VERSION} to production?",
+                        ok: 'yes, deploy',
+                        parameters: [
+                            string(
+                                name: 'APPROVED_BY',
+                                defaultValue: '',
+                                description:"Enter your name to confirm approval"
+                            )
+                        ]
+                    )
+                }
+            }
+        }
         stage('Deploy to production') {
             when {
                 allOf {
@@ -95,6 +118,9 @@ pipeline {
         }
         failure {
             echo "❌ Pipeline failed for v${params.APP_VERSION} targeting ${params.ENVIRONMENT}."
+        }
+        aborted {
+            echo "⚠️ Pipeline was aborted. Approval may have timed out or was rejected."
         }
         always {
             echo 'Pipeline finished.'
