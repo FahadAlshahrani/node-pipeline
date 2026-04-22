@@ -37,6 +37,25 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Set Build Info') {
+            steps{
+                script{
+                    env.GIT_COMMIT_SHORT = sh(
+                        script:'git rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
+
+                    env.BUILD_LABEL = "${params.APP_VERSION}-${env.GIT_COMMIT_SHORT}"
+
+                    echo "Build label: ${env.BUILD_LABEL}"
+                    echo "Targeting environment: ${params.ENVIRONMENT}"
+
+                    if(params.ENVIRONMENT == 'production') {
+                        echo "⚠️ WARNING: This pipeline will deploy to PRODUCTION"
+                    }
+                }
+            }
+        }
         stage('Install Dependencies') {
             steps {
                 echo "Installing dependencies for ${APP_NAME} v${params.APP_VERSION}..."
@@ -48,8 +67,16 @@ pipeline {
                 expression { params.SKIP_QUALITY == false }
             } 
             steps {
-                echo "Checking code quality..."
-                sh "npx eslint src/ --ext .js || true"
+                script{
+                    try {
+                        sh "npx eslint src/ --ext .js"
+                        echo '✅ Code quality passed'
+                    } catch(Exception e) {
+                        echo "⚠️ Code quality issues found: ${e.message}"
+                        currentBuild.results = 'UNSTABLE'
+                    }
+                    
+                }
             }
         }
         stage('Test') {
@@ -57,14 +84,22 @@ pipeline {
                 expression { params.RUN_TESTS == true }
             }
             steps {
-                echo "Running tests in ${NODE_ENV} mode..."
-                sh "npm test"
+                script {
+                    try {
+                        sh "npm test"
+                        echo '✅ All tests passed'
+                    } catch (Exception e) {
+                        echo "❌ Tests failed: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        error "Stopping pipeline due to test failure"
+                    }
+                }
             }
         }
         stage('Build') {
             steps {
-                 echo "Building ${APP_NAME} v${params.APP_VERSION} for ${params.ENVIRONMENT}..."
-                 sh 'echo Build complete!'
+                echo "Building ${APP_NAME} with label ${env.BUILD_LABEL}..."
+                sh 'echo Build complete!'
             }
         }
         stage('Push to registry') {
@@ -77,20 +112,11 @@ pipeline {
                     )
                 ]) {
                     sh 'echo "Logging in as $DOCKER_USER"'
-                    sh 'echo "Docker login successful (password is: $DOCKER_PASS)"'
-                    sh 'echo Pushing image to registry...'
+                    sh 'echo Pushing ${APP_NAME}:${BUILD_LABEL} to registry...'
                 }
             }
         }
-        stage('Deploy to staging') {
-            when {
-                expression { params.ENVIRONMENT == 'staging' }
-            }
-            steps {
-                echo "Deploying v${params.APP_VERSION} to ${params.ENVIRONMENT} environment...."
-                sh 'echo Staging deploy complete!'
-            }
-        }
+        
         stage('production approval') {
             when {
                
@@ -101,7 +127,7 @@ pipeline {
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
                     input (
-                        message: "Deploy v${params.APP_VERSION} to production?",
+                        message: "Deploy ${env.BUILD_LABEL} to PRODUCTION?",
                         ok: 'yes, deploy',
                         parameters: [
                             string(
@@ -114,6 +140,15 @@ pipeline {
                 }
             }
         }
+        stage('Deploy to staging') {
+            when {
+                expression { params.ENVIRONMENT == 'staging' }
+            }
+            steps {
+                echo "Deploying ${env.BUILD_LABEL} to STAGING..."
+                sh 'echo Staging deploy complete!'
+            }
+        }
         stage('Deploy to production') {
             when {
                 
@@ -122,7 +157,7 @@ pipeline {
                
             }
             steps {
-                echo "Deploying v${params.APP_VERSION} to ${params.ENVIRONMENT} environment...."
+                echo "Deploying ${env.BUILD_LABEL} to PRODUCTION..."
                 sh 'echo Production deploy complete!'
             }
         }
@@ -130,13 +165,16 @@ pipeline {
 
     post {
         success {
-            echo "✅ ${APP_NAME} v${params.APP_VERSION} deployed to ${params.ENVIRONMENT} successfully!"
+            echo "✅ ${APP_NAME} ${env.BUILD_LABEL} passed!"
         }
         failure {
-            echo "❌ Pipeline failed for v${params.APP_VERSION} targeting ${params.ENVIRONMENT}."
+            echo "❌ Pipeline failed for ${env.BUILD_LABEL}."
+        }
+        unstable {
+            echo "⚠️ Pipeline unstable — check code quality warnings."
         }
         aborted {
-            echo "⚠️ Pipeline was aborted. Approval may have timed out or was rejected."
+            echo "⚠️ Pipeline aborted."
         }
         always {
             echo 'Pipeline finished.'
