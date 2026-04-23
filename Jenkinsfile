@@ -99,7 +99,13 @@ pipeline {
         stage('Build') {
             steps {
                 echo "Building ${APP_NAME} with label ${env.BUILD_LABEL}..."
-                sh 'echo Build complete!'
+                sh 'npm run build'
+
+                stash(
+                    name: 'built-app',
+                    includes:'dist/**, package.json'
+                )
+                echo "✅ Build artifacts stashed"
             }
         }
         stage('Push to registry') {
@@ -145,7 +151,10 @@ pipeline {
                 expression { params.ENVIRONMENT == 'staging' }
             }
             steps {
+                unstash('built-app')
                 echo "Deploying ${env.BUILD_LABEL} to STAGING..."
+                sh 'ls -la dist/'
+                sh 'cat dist/build-info.json'
                 sh 'echo Staging deploy complete!'
             }
         }
@@ -157,8 +166,20 @@ pipeline {
                
             }
             steps {
+                unstash 'built-app'
                 echo "Deploying ${env.BUILD_LABEL} to PRODUCTION..."
+                sh 'ls -la dist/'
+                sh 'cat dist/build-info.json'
                 sh 'echo Production deploy complete!'
+            }
+        }
+        stage('Archive Artifacts') {
+            steps {
+                archiveArtifacts(
+                    artifacts: 'dist/**',
+                    fingerprint: true
+                )
+                echo "✅ Artifacts archived to Jenkins"
             }
         }
     }

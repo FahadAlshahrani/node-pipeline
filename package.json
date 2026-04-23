@@ -5,7 +5,9 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "test": "jest --ci --coverage"
+    "test": "jest --ci --coverage",
+    "build": "mkdir -p dist && cp -r src/* dist/ && echo '{\"version\":\"'$npm_package_version'\",\"built\":\"'$(date)'\"}' > dist/build-info.json"
+
   },
   "keywords": [],
   "author": "",
