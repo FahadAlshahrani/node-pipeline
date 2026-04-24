@@ -66,7 +66,7 @@ pipeline {
             when {
                 expression { params.RUN_TESTS == true || params.SKIP_QUALITY == false }
             }
-            failFast = true
+            failFast true
             parallel {
                 stage('Lint') {
                     when {
