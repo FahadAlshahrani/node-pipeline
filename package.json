@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node src/app.js",
     "test": "jest --ci --coverage",
-    "build": "mkdir -p dist && cp -r src/* dist/ && echo '{\"version\":\"'$npm_package_version'\",\"built\":\"'$(date)'\"}' > dist/build-info.json"
+    "test:unit": "jest --ci --testPathPattern=unit",
+    "test:integration": "jest --ci --testPathPattern=integration",
+    "build": "mkdir -p dist && cp -r src/* dist/ && echo '{\"version\":\"'$npm_package_version'\",\"built\":\"'$(date)'\"}' > dist/build-info.json",
+    "lint": "npx eslint src/ --ext .js"
 
   },
   "keywords": [],

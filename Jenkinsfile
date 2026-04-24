@@ -62,40 +62,68 @@ pipeline {
                 sh "npm install"
             }
         }
-        stage('Code Quality') {
+        stage('Quality Gates') {
             when {
-                expression { params.SKIP_QUALITY == false }
-            } 
-            steps {
-                script{
-                    try {
-                        sh "npx eslint src/ --ext .js"
-                        echo '✅ Code quality passed'
-                    } catch(Exception e) {
-                        echo "⚠️ Code quality issues found: ${e.message}"
-                        currentBuild.results = 'UNSTABLE'
+                expression { params.RUN_TESTS == true || params.SKIP_QUALITY == false }
+            }
+            failFast = true
+            parallel {
+                stage('Lint') {
+                    when {
+                        expression { params.SKIP_QUALITY == false }
                     }
-                    
+                    steps {
+                        script {
+                            try {
+                                sh 'npm run lint'
+                                echo '✅ Lint passed'
+                            } catch (Exception e) {
+                                echo "⚠️ Lint issues found"
+                                currentBuild.results = 'UNSTABLE'
+                            }
+                        }
+                    }
+                }
+                stage('Unit Test') {
+                    when {
+                        expression {params.RUN_TESTS == true}
+                    }
+                    steps {
+                        script {
+                            try {
+                                sh 'npm run test:unit'
+                                echo '✅ Unit tests passed'
+                            } catch (Exception e) {
+                                echo "❌ Unit tests failed"
+                                currentBuild.result = 'FAILURE'
+                                error "Unit tests failed"
+                            }
+                        }
+                    }
+                }
+                stage('Integration Tests') {
+                    when {
+                        allOf {
+                            expression { params.RUN_TESTS == true }
+                            expression { params.ENVIRONMENT != 'dev'}
+                        }
+                    }
+                    steps {
+                        script {
+                            try {
+                                sh 'npm run test:integration'
+                                echo '✅ Integration tests passed'
+                            } catch (Exception e) {
+                                echo "❌ Integration tests failed"
+                                currentBuild.result = 'FAILURE'
+                                error "Integration tests failed"
+                            }
+                        }
+                    }
                 }
             }
         }
-        stage('Test') {
-            when {
-                expression { params.RUN_TESTS == true }
-            }
-            steps {
-                script {
-                    try {
-                        sh "npm test"
-                        echo '✅ All tests passed'
-                    } catch (Exception e) {
-                        echo "❌ Tests failed: ${e.message}"
-                        currentBuild.result = 'FAILURE'
-                        error "Stopping pipeline due to test failure"
-                    }
-                }
-            }
-        }
+        
         stage('Build') {
             steps {
                 echo "Building ${APP_NAME} with label ${env.BUILD_LABEL}..."
