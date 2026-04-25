@@ -214,19 +214,45 @@ pipeline {
 
     post {
         success {
-            echo "✅ ${APP_NAME} ${env.BUILD_LABEL} passed!"
+            script {
+                slackSend(
+                    channel: '#deployments',
+                    color: 'good',
+                    message: "✅ *${env.APP_NAME}* build #${env.BUILD_NUMBER} passed\n*Version:* ${env.BUILD_LABEL}\n*Environment:* ${params.ENVIRONMENT}\n*URL:* ${env.BUILD_URL}"
+                )
+
+                if (currentBuild.previousBuild?.result == 'FAILURE') {
+                    slackSend(
+                        channel: '#deployments',
+                        color: 'good',
+                        message: "🎉 *${env.APP_NAME}* recovered from previous failure!"
+                    )
+                }
+            }
         }
         failure {
-            echo "❌ Pipeline failed for ${env.BUILD_LABEL}."
+            slackSend(
+                channel: '#deployments',
+                color: 'danger',
+                message: "❌ *${env.APP_NAME}* build #${env.BUILD_NUMBER} FAILED\n*Version:* ${env.BUILD_LABEL}\n*Environment:* ${params.ENVIRONMENT}\n*Logs:* ${env.BUILD_URL}console"
+            )
         }
         unstable {
-            echo "⚠️ Pipeline unstable — check code quality warnings."
+            slackSend(
+                channel: '#deployments',
+                color: 'warning',
+                message: "⚠️ *${env.APP_NAME}* build #${env.BUILD_NUMBER} is unstable\n*Version:* ${env.BUILD_LABEL}"
+            )
         }
         aborted {
-            echo "⚠️ Pipeline aborted."
+            slackSend(
+                channel: '#deployments',
+                color: 'warning',
+                message: "⚠️ *${env.APP_NAME}* build #${env.BUILD_NUMBER} was aborted"
+            )
         }
         always {
             echo 'Pipeline finished.'
         }
-    }
+}
 }
